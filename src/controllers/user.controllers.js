@@ -54,7 +54,12 @@ const loginUser = async (req, res ) =>{
   }
 
   // Compare the provided password with the stored hashed password
-  const pass = await bcrypt.compare(password, user.password);
+  try{
+    const pass = await bcrypt.compare(password, user.password);
+  }
+  catch(err){
+    console.error('Error comparing passwords:', err);
+  }
 
   // If the password is incorrect, return an error
   if(!pass)return res.status(401).json({ message: "WRONG PASSWORD" });
@@ -67,7 +72,7 @@ const loginUser = async (req, res ) =>{
     },
     process.env.JWT_SECRET,
     {
-      expiresIn: "20s"
+      expiresIn: "1h"
     }
 
   )
