@@ -1,12 +1,16 @@
 import { Router } from 'express';
+
 const router = Router();
 
 
-import { registerUser, loginUser } from '../controllers/user.controllers.js';
+import { registerUser, loginUser, getProfile} from '../controllers/user.controllers.js';
+import {verifyjwt} from '../middlewares/auth.middleware.js';
 
 // Register endpoint
 router.post('/register', registerUser);
 router.get('/login', loginUser );
+router.get('/profile', verifyjwt, getProfile);
+
 
 
 // router.post('/:id', (req, res) => {

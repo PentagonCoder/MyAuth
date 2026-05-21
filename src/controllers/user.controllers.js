@@ -1,13 +1,17 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 
 const users = [];
 
 const registerUser = async (req, res) => {
 
   const {fullname, email, password} = req.body;
+
+
   // Hash the password
   const hashedPassword = await bcrypt.hash(password, 10 );
+
 
   // Create a new user object
   const newUser = {
@@ -16,17 +20,25 @@ const registerUser = async (req, res) => {
     password: hashedPassword
   };
 
+
   // Add the new user to the users array
   users.push(newUser);
 
   // Save the users array to a file (for simplicity, using JSON file here)
   fs.writeFileSync('./public/users.json', JSON.stringify(users));
 
-  res.status(201).send( users);
+  res
+    .status(201)
+    .json(
+      { 
+        message : "User registered successfully" 
+      }
+    );
 
 };
 
 const loginUser = async (req, res ) =>{
+
   const {email, password} = req.body;
 
   // Read users from the file and parse it
@@ -38,17 +50,39 @@ const loginUser = async (req, res ) =>{
 
   // If user not found, return an error
   if (!user) {
-    return res.send("not register");
+    return res.status(404).json({ message: "USER NOT FOUND" });
   }
 
   // Compare the provided password with the stored hashed password
   const pass = await bcrypt.compare(password, user.password);
 
   // If the password is incorrect, return an error
-  if(!pass)return res.send("wrong password");
+  if(!pass)return res.status(401).json({ message: "WRONG PASSWORD" });
 
-  res.send("login successfully");
+  //jwt 
+  const token = jwt.sign(
+    {
+      email: user.email,
+      password: user.password
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "20s"
+    }
+
+  )
+
+  res.send(
+    {
+      message : "login successfully",
+      token
+    }
+  );
 
 }
 
-export { registerUser, loginUser };
+const getProfile = (req, res) => {
+  res.send(`Welcome to your profile, ${req.user.email}!`);
+}
+
+export { registerUser, loginUser, getProfile };
