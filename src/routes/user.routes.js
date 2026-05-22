@@ -8,8 +8,8 @@ import {verifyjwt} from '../middlewares/auth.middleware.js';
 
 // Register endpoint
 router.post('/register', registerUser);
-router.get('/login', loginUser );
-router.get('/profile', verifyjwt, getProfile);
+router.post('/login', loginUser );
+router.post('/profile', verifyjwt, getProfile);
 
 
 

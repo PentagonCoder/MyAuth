@@ -1,52 +1,60 @@
 import bcrypt from 'bcrypt';
-import fs from 'fs';
 import jwt from 'jsonwebtoken';
-
-const users = [];
+import User from '../model/user.model.js';
 
 const registerUser = async (req, res) => {
 
   const {fullname, email, password} = req.body;
+  try {
+    // Check if user already exists
+    const userExists = await User.findOne({ email });
 
-
-  // Hash the password
-  const hashedPassword = await bcrypt.hash(password, 10 );
-
-
-  // Create a new user object
-  const newUser = {
-    fullname,
+    if(!userExists) 
+      return res.status(400).json({ 
+        message: "USER ALREADY EXISTS" 
+    });
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10 );
+    
+    
+    // Create a new user object
+    const newUser = await User.create({ 
+    name: fullname,
     email,
     password: hashedPassword
-  };
-
-
-  // Add the new user to the users array
-  users.push(newUser);
-
-  // Save the users array to a file (for simplicity, using JSON file here)
-  fs.writeFileSync('./public/users.json', JSON.stringify(users));
-
+  });
+  
+  
+  console.log(newUser);
+  
+  
   res
-    .status(201)
-    .json(
-      { 
-        message : "User registered successfully" 
-      }
-    );
-
+  .status(201)
+  .json(
+    { 
+      message : "User registered successfully" 
+    }
+  );
+} catch (error) {
+  console.error('Error registering user:', error);
+  res.status(500).json({ 
+    message: "INTERNAL SERVER ERROR" 
+  });
+}
 };
 
 const loginUser = async (req, res ) =>{
 
   const {email, password} = req.body;
 
-  // Read users from the file and parse it
-  const usersData = fs.readFileSync('./public/users.json', 'utf-8');
-  const users = JSON.parse(usersData);
+  if(!email || !password) 
+    return res.status(400).json({ 
+    message: "EMAIL AND PASSWORD ARE REQUIRED" 
+  });
+
 
   // Find the user by email
-  const user = users.find((u)=>(u.email === email))
+  const user = await User.findOne({ email });
 
   // If user not found, return an error
   if (!user) {
@@ -54,8 +62,9 @@ const loginUser = async (req, res ) =>{
   }
 
   // Compare the provided password with the stored hashed password
+  let pass = false;
   try{
-    const pass = await bcrypt.compare(password, user.password);
+    pass = await bcrypt.compare(password, user.password);
   }
   catch(err){
     console.error('Error comparing passwords:', err);
@@ -64,11 +73,11 @@ const loginUser = async (req, res ) =>{
   // If the password is incorrect, return an error
   if(!pass)return res.status(401).json({ message: "WRONG PASSWORD" });
 
-  //jwt 
+  //jwt generation
   const token = jwt.sign(
     {
       email: user.email,
-      password: user.password
+      id: user._id
     },
     process.env.JWT_SECRET,
     {

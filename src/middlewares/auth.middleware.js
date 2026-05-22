@@ -1,14 +1,17 @@
 import jwt from 'jsonwebtoken';
 
 const verifyjwt = (req, res, next) => {
-  const token = req.body.token;
+  const authHeader = req.headers.authorization;
   
-  if (!token) {
-    return res.status(401).json({ message: "NO TOKEN PROVIDED" });
+  if (!authHeader) {
+    return res.status(401).json({ 
+      message: "NO TOKEN PROVIDED" 
+    });
   }
 
-  try {
+  const token = authHeader.split(" ")[1];
 
+  try {
     const decoded = jwt.verify(
       token, 
       process.env.JWT_SECRET

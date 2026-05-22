@@ -7,14 +7,18 @@ const port = 3000
 app.use(express.json())
 
 import userRoutes from './routes/user.routes.js'
+import connectDB from './db/index.js'
+
 app.use('/api/users', userRoutes)
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
+connectDB()
+.then(()=> console.log("Connected to MongoDB"))
+.then(() => {
+    app.listen(process.env.PORT, () => {
+    console.log(`Example app listening on port ${process.env.PORT}!`)
+    })
 })
-
-
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+.catch((error) => {
+    console.error("Failed to connect to MongoDB:", error);
+    process.exit(1); // Exit the application if the database connection fails
+});
