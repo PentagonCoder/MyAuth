@@ -1,10 +1,12 @@
 import express from 'express'
 const app = express()
 import dotenv from 'dotenv'
+import cookieParser from 'cookie-parser'
 dotenv.config()
 const port = 3000
 
 app.use(express.json())
+app.use(cookieParser())
 
 import userRoutes from './routes/user.routes.js'
 import connectDB from './db/index.js'

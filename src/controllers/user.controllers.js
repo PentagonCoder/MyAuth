@@ -1,18 +1,37 @@
+import {asyncHandler} from '../utils/asyncHandler.js'
+import {generateAccessToken, generateRefreshToken} from '../utils/tokenUtils.js'
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../model/user.model.js';
 
-const registerUser = async (req, res) => {
-
-  const {fullname, email, password} = req.body;
+const generateAccessTokenandRefreshToken = async (user) => {
   try {
+    const accessToken = await generateAccessToken(user);
+    const refreshToken = await generateRefreshToken(user);
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    console.error('Error generating tokens:', error);
+    throw error;
+  }
+};
+
+const registerUser = asyncHandler( async (req, res, ) => {
+  
+  const {fullname, email, password} = req.body;
+  
     // Check if user already exists
     const userExists = await User.findOne({ email });
 
-    if(!userExists) 
+    if(userExists) 
       return res.status(400).json({ 
         message: "USER ALREADY EXISTS" 
     });
+
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10 );
     
@@ -35,15 +54,10 @@ const registerUser = async (req, res) => {
       message : "User registered successfully" 
     }
   );
-} catch (error) {
-  console.error('Error registering user:', error);
-  res.status(500).json({ 
-    message: "INTERNAL SERVER ERROR" 
-  });
-}
-};
+  }
+)
 
-const loginUser = async (req, res ) =>{
+const loginUser = asyncHandler(async (req, res ) =>{
 
   const {email, password} = req.body;
 
@@ -74,29 +88,89 @@ const loginUser = async (req, res ) =>{
   if(!pass)return res.status(401).json({ message: "WRONG PASSWORD" });
 
   //jwt generation
-  const token = jwt.sign(
-    {
-      email: user.email,
-      id: user._id
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "1h"
-    }
-
-  )
-
-  res.send(
+  const { accessToken, refreshToken } = await generateAccessTokenandRefreshToken(user);
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict"
+  };
+  res
+  .status(200)
+  .cookie("accessToken", accessToken, cookieOptions)
+  .cookie("refreshToken", refreshToken, cookieOptions)
+  .json(
     {
       message : "login successfully",
-      token
+      accessToken,
+      refreshToken
     }
   );
 
-}
+})
 
-const getProfile = (req, res) => {
+const logoutUser = asyncHandler(async (req, res) => {
+
+  // Get the user from auth middleware
+  const user = req.user;
+
+  const foundUser = await User.findById(user.id);
+  
+  if (!foundUser) {
+    return res.status(401).json({ message: "USER NOT AUTHENTICATED" });
+  }
+
+  foundUser.refreshToken = "";
+  await foundUser.save();
+
+  res
+    .status(200)
+    .clearCookie("accessToken")
+    .clearCookie("refreshToken")
+    .json({ message: "LOGOUT SUCCESSFUL" });
+})
+
+const refreshToken = asyncHandler(async (req, res) => {
+  const token = req.cookies?.refreshToken || req.header("Authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return res.status(401).json({ message: "NO REFRESH TOKEN PROVIDED" });
+  }
+
+  try {
+
+    //decode the token to get the user ID
+    const decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+
+    const user = await User.findById(decodedToken._id);
+
+    if (!user) {
+      return res.status(401).json({ message: "INVALID REFRESH TOKEN" });
+    }
+
+    // Check if the refresh token matches the one stored in the database
+    if (user.refreshToken !== token) {
+      return res.status(401).json({ message: "REFRESH TOKEN MISMATCH" });
+    }
+
+    const accessToken = await generateAccessToken(user);
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict"
+    };
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, cookieOptions)
+      .json({ message: "AccessToken generated successfully", accessToken });
+  } catch (error) {
+    return res.status(403).json({ message: "INVALID OR EXPIRED REFRESH TOKEN", error: error.message });
+  }
+});
+
+
+const getProfile = asyncHandler( async(req, res) => {
   res.send(`Welcome to your profile, ${req.user.email}!`);
-}
+})
 
-export { registerUser, loginUser, getProfile };
+export { registerUser, loginUser, getProfile, refreshToken, logoutUser };

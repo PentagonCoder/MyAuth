@@ -1,21 +1,16 @@
 import jwt from 'jsonwebtoken';
 
-const verifyjwt = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+const verifyjwt = async (req, res, next) => {
+  const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "")
   
-  if (!authHeader) {
+  if (!token) {
     return res.status(401).json({ 
       message: "NO TOKEN PROVIDED" 
     });
   }
 
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(
-      token, 
-      process.env.JWT_SECRET
-    );
+    const decoded = await jwt.verify( token, process.env.ACCESS_TOKEN_SECRET );
     
     req.user = decoded;
 
