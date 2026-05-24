@@ -5,9 +5,11 @@ const router = Router();
 
 import { registerUser, loginUser, getProfile, refreshToken, logoutUser} from '../controllers/user.controllers.js';
 import {verifyjwt} from '../middlewares/auth.middleware.js';
+import { validate } from '../middlewares/validate.middleware.js';
+import { registerSchema } from '../validators/user.validation.js';
 
 // Register endpoint
-router.post('/register', registerUser);
+router.post('/register', validate(registerSchema), registerUser);
 router.post('/login', loginUser );
 router.post('/refresh-Token', refreshToken);
 router.post('/profile', verifyjwt, getProfile);
