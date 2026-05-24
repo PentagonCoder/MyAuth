@@ -21,7 +21,7 @@ const generateAccessTokenandRefreshToken = async (user) => {
 
 const registerUser = asyncHandler( async (req, res, ) => {
   
-  const {fullname, email, password} = req.body;
+  const {fullname, email, password, role} = req.body;
   
     // Check if user already exists
     const userExists = await User.findOne({ email });
@@ -40,7 +40,8 @@ const registerUser = asyncHandler( async (req, res, ) => {
     const newUser = await User.create({ 
     name: fullname,
     email,
-    password: hashedPassword
+    password: hashedPassword,
+    role: role || 'user'
   });
   
   
@@ -173,4 +174,8 @@ const getProfile = asyncHandler( async(req, res) => {
   res.send(`Welcome to your profile, ${req.user.email}!`);
 })
 
-export { registerUser, loginUser, getProfile, refreshToken, logoutUser };
+const adminDashboard = asyncHandler( async(req, res) => {
+  res.send(`Welcome to adminDashboard, ${req.user.email}!`);
+})
+
+export { registerUser, loginUser, getProfile, refreshToken, logoutUser, adminDashboard };
