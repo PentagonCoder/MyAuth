@@ -3,6 +3,8 @@ import {generateAccessToken, generateRefreshToken} from '../utils/tokenUtils.js'
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../model/user.model.js';
+import crypto from "crypto";
+import { sendEmail } from '../utils/sendEmail.js';
 
 const generateAccessTokenandRefreshToken = async (user) => {
   try {
@@ -35,28 +37,74 @@ const registerUser = asyncHandler( async (req, res, ) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10 );
     
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+    const hashedVerificationToken = crypto.createHash("sha256").update(verificationToken).digest("hex");
     
     // Create a new user object
     const newUser = await User.create({ 
     name: fullname,
     email,
     password: hashedPassword,
-    role: role || 'user'
+    role: role || 'user',
+    verificationToken: hashedVerificationToken,
+    verificationTokenExpires
+
   });
+
+  const verificationLink = `http://localhost:3000/api/users/verify-email/${verificationToken}`;
+  const message = `Please verify your email by clicking the following link: ${verificationLink}`;
   
-  
+  await sendEmail({
+    to: newUser.email,
+    subject: "Verify your email",
+    text: message
+  });
+
   console.log(newUser);
   
   
   res
-  .status(201)
+  .status(200)
   .json(
     { 
-      message : "User registered successfully" 
+      message : "Please verify your email" 
     }
   );
   }
 )
+
+const emailVerify = asyncHandler(async (req, res)=>{
+  const {token} =req.params;
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({ verificationToken : hashedToken})
+
+  if(!user) {
+    return res.status(400).json({
+      message : "INVALID OR EXPIRED RESET TOKEN"
+    })
+  }
+  
+  if(user.isVerified){
+    return res.status(403).json({ message: "User already verified" });
+  }
+
+  if(Date.now() > user.verificationTokenExpires){
+    return res.status(400).json({
+    message : "token Expired"
+  })}
+
+  user.isVerified = true;
+  user.verificationToken = undefined;
+  user.verificationTokenExpires = undefined;
+  await user.save()
+
+  res.status(201)
+  .json({ message : "your email is verify " });
+  
+})
 
 const loginUser = asyncHandler(async (req, res ) =>{
 
@@ -76,6 +124,11 @@ const loginUser = asyncHandler(async (req, res ) =>{
     return res.status(404).json({ message: "USER NOT FOUND" });
   }
 
+  // Check if the user's email is verified
+  if(user.isVerified === false){
+    return res.status(403).json({ message: "PLEASE VERIFY YOUR EMAIL TO LOGIN" });
+  }
+  
   // Compare the provided password with the stored hashed password
   let pass = false;
   try{
@@ -178,4 +231,4 @@ const adminDashboard = asyncHandler( async(req, res) => {
   res.send(`Welcome to adminDashboard, ${req.user.email}!`);
 })
 
-export { registerUser, loginUser, getProfile, refreshToken, logoutUser, adminDashboard };
+export { registerUser, emailVerify, loginUser, getProfile, refreshToken, logoutUser, adminDashboard };
