@@ -16,7 +16,6 @@ What I learned:
 
 ## Development Workflow
 
-Features were developed in separate branches before being merged into the main branch.  
 Each feature was implemented and tested independently in dedicated branches before being merged into the main branch.
 
 ## Engineering Practices
