@@ -1,4 +1,4 @@
-# MyAuth
+# secure-auth-api
 
 MyAuth is a Node.js + Express authentication API with MongoDB, JWT-based auth, email verification, password reset (link and OTP), and role-based route protection.
 
@@ -9,6 +9,7 @@ MyAuth is a Node.js + Express authentication API with MongoDB, JWT-based auth, e
 - MongoDB + Mongoose
 - JWT (`jsonwebtoken`)
 - Zod validation
+- bcrypt
 - Nodemailer
 
 ## Features
@@ -20,6 +21,8 @@ MyAuth is a Node.js + Express authentication API with MongoDB, JWT-based auth, e
 - Logout (clears cookies and stored refresh token)
 - Protected profile route
 - Role-based admin route
+- Forgot Password with OTP
+- Password Hashing with bcrypt
 - Password reset via email link
 - Password reset via OTP
 - Basic rate limiting for incoming requests
@@ -35,6 +38,7 @@ src/
   routes/
   utils/
   validators/
+
 ```
 
 ## Getting Started
